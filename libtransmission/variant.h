@@ -79,13 +79,19 @@ public:
 
     tr_variant& operator=(std::string const& value)
     {
-        val_.emplace<StringHolder>(std::string(value));
+        val_.emplace<StringHolder>(std::string{value});
+        return *this;
+    }
+
+    tr_variant& operator=(char const* const value)
+    {
+        val_.emplace<StringHolder>(std::string{ value != nullptr ? value : "" });
         return *this;
     }
 
     tr_variant& operator=(std::string_view value)
     {
-        val_.emplace<StringHolder>(std::string(value));
+        val_.emplace<StringHolder>(std::string{value});
         return *this;
     }
 
