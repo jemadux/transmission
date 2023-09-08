@@ -706,14 +706,14 @@ namespace make_torrent_field_helpers
     case TR_KEY_secondsDownloading: return st.secondsDownloading;
     case TR_KEY_secondsSeeding: return st.secondsSeeding;
     case TR_KEY_seedIdleLimit: return tor.idle_limit_minutes();
-    case TR_KEY_seedIdleMode: return tor.idle_limit_mode();
+    case TR_KEY_seedIdleMode: return static_cast<int64_t>(tor.idle_limit_mode());
     case TR_KEY_seedRatioLimit: return tr_torrentGetRatioLimit(&tor);
-    case TR_KEY_seedRatioMode: return tr_torrentGetRatioMode(&tor);
+    case TR_KEY_seedRatioMode: return static_cast<int64_t>(tr_torrentGetRatioMode(&tor));
     case TR_KEY_sequentialDownload: return tor.is_sequential_download();
     case TR_KEY_sizeWhenDone: return st.sizeWhenDone;
     case TR_KEY_source: return tor.source();
     case TR_KEY_startDate: return st.startDate;
-    case TR_KEY_status: return st.activity;
+    case TR_KEY_status: return static_cast<int64_t>(st.activity);
     case TR_KEY_torrentFile: return tor.torrent_file();
     case TR_KEY_totalSize: return tor.total_size();
     case TR_KEY_trackerList: return tor.tracker_list();
