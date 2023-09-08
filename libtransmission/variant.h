@@ -43,7 +43,28 @@ public:
     };
 
     using Vector = std::vector<tr_variant>;
-    using Map = std::map<tr_quark, tr_variant>;
+
+    class Map: public std::map<tr_quark, tr_variant>
+    {
+    public:
+        template<typename Type>
+        [[nodiscard]] auto find_if(tr_quark key) const
+        {
+            auto const iter = find(key);
+            return iter == end() ? nullptr : iter->second.get_if<Type>();
+        }
+
+        template<typename Type>
+        [[nodiscard]] std::optional<Type> value_if(tr_quark key) const
+        {
+            if (auto const* const value =find_if<Type>(key); value != nullptr)
+            {
+                return *value;
+            }
+
+            return std::nullopt;
+        }
+    };
 
     constexpr tr_variant() noexcept = default;
     tr_variant(tr_variant const&) = delete;
@@ -55,6 +76,13 @@ public:
     {
         auto ret = tr_variant{};
         ret.val_.emplace<Map>();
+        return ret;
+    }
+
+    [[nodiscard]] static auto make_vector(size_t n_reserve) noexcept
+    {
+        auto ret = tr_variant{};
+        ret.val_.emplace<Vector>().reserve(n_reserve);
         return ret;
     }
 
