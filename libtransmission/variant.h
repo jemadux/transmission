@@ -44,20 +44,20 @@ public:
 
     using Vector = std::vector<tr_variant>;
 
-    class Map: public std::map<tr_quark, tr_variant>
+    class Map : public std::map<tr_quark, tr_variant>
     {
     public:
         template<typename Type>
         [[nodiscard]] auto find_if(tr_quark key) const
         {
             auto const iter = find(key);
-            return iter == end() ? nullptr : iter->second.get_if<Type>();
+            return iter != end() ? iter->second.get_if<Type>() : nullptr;
         }
 
         template<typename Type>
         [[nodiscard]] std::optional<Type> value_if(tr_quark key) const
         {
-            if (auto const* const value =find_if<Type>(key); value != nullptr)
+            if (auto const* const value = find_if<Type>(key); value != nullptr)
             {
                 return *value;
             }
@@ -107,7 +107,7 @@ public:
 
     tr_variant& operator=(std::string const& value)
     {
-        val_.emplace<StringHolder>(std::string{value});
+        val_.emplace<StringHolder>(std::string{ value });
         return *this;
     }
 
@@ -119,7 +119,7 @@ public:
 
     tr_variant& operator=(std::string_view value)
     {
-        val_.emplace<StringHolder>(std::string{value});
+        val_.emplace<StringHolder>(std::string{ value });
         return *this;
     }
 
