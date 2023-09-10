@@ -117,10 +117,11 @@ void tr_variant::Merge::operator()(tr_variant::Map const& src)
     {
         tgt_.val_.emplace<tr_variant::Map>();
     }
-    auto* const tgt = tgt_.get_if<tr_variant::MapIndex>();
+    auto& tgt = *tgt_.get_if<tr_variant::MapIndex>();
+    tgt.reserve(std::size(tgt) + std::size(src));
     for (auto const& [key, val] : src)
     {
-        std::visit(Merge{ (*tgt)[key] }, val.val_);
+        std::visit(Merge{ tgt[key] }, val.val_);
     }
 }
 
@@ -380,31 +381,38 @@ void tr_variantInitStr(tr_variant* initme, std::string_view value)
     *initme = value;
 }
 
-void tr_variantInitList(tr_variant* initme, size_t reserve_count)
+void tr_variantInitList(tr_variant* initme, size_t n_reserve)
 {
     auto vec = tr_variant::Vector{};
-    vec.reserve(reserve_count);
+    vec.reserve(n_reserve);
     *initme = std::move(vec);
 }
 
-void tr_variantListReserve(tr_variant* const var, size_t count)
+void tr_variantListReserve(tr_variant* const var, size_t n_reserve)
 {
     TR_ASSERT(var != nullptr);
     TR_ASSERT(var->holds_alternative<tr_variant::Vector>());
 
     if (auto* const vec = var != nullptr ? var->get_if<tr_variant::VectorIndex>() : nullptr; vec != nullptr)
     {
-        vec->reserve(std::size(*vec) + count);
+        vec->reserve(std::size(*vec) + n_reserve);
     }
 }
 
-void tr_variantInitDict(tr_variant* initme, size_t /*reserve_count*/)
+void tr_variantInitDict(tr_variant* initme, size_t n_reserve)
 {
-    *initme = tr_variant::Map{};
+    *initme = tr_variant::Map{ n_reserve };
 }
 
-void tr_variantDictReserve(tr_variant* const /*var*/, size_t /*reserve_count*/)
+void tr_variantDictReserve(tr_variant* const var, size_t n_reserve)
 {
+    TR_ASSERT(var != nullptr);
+    TR_ASSERT(var->holds_alternative<tr_variant::Map>());
+
+    if (auto* const map = var != nullptr ? var->get_if<tr_variant::MapIndex>() : nullptr; map != nullptr)
+    {
+        map->reserve(std::size(*map) + n_reserve);
+    }
 }
 
 tr_variant* tr_variantListAdd(tr_variant* const var)
@@ -467,19 +475,19 @@ tr_variant* tr_variantListAddRaw(tr_variant* const var, void const* value, size_
     return child;
 }
 
-tr_variant* tr_variantListAddList(tr_variant* const var, size_t reserve_count)
+tr_variant* tr_variantListAddList(tr_variant* const var, size_t n_reserve)
 {
     auto* const child = tr_variantListAdd(var);
     auto vec = tr_variant::Vector{};
-    vec.reserve(reserve_count);
+    vec.reserve(n_reserve);
     *child = std::move(vec);
     return child;
 }
 
-tr_variant* tr_variantListAddDict(tr_variant* const var, size_t reserve_count)
+tr_variant* tr_variantListAddDict(tr_variant* const var, size_t n_reserve)
 {
     auto* const child = tr_variantListAdd(var);
-    tr_variantInitDict(child, reserve_count);
+    tr_variantInitDict(child, n_reserve);
     return child;
 }
 
@@ -552,17 +560,17 @@ tr_variant* tr_variantDictAddRaw(tr_variant* const var, tr_quark key, void const
     return child;
 }
 
-tr_variant* tr_variantDictAddList(tr_variant* const var, tr_quark key, size_t reserve_count)
+tr_variant* tr_variantDictAddList(tr_variant* const var, tr_quark key, size_t n_reserve)
 {
     auto* const child = tr_variantDictAdd(var, key);
-    tr_variantInitList(child, reserve_count);
+    tr_variantInitList(child, n_reserve);
     return child;
 }
 
-tr_variant* tr_variantDictAddDict(tr_variant* const var, tr_quark key, size_t reserve_count)
+tr_variant* tr_variantDictAddDict(tr_variant* const var, tr_quark key, size_t n_reserve)
 {
     auto* const child = tr_variantDictAdd(var, key);
-    tr_variantInitDict(child, reserve_count);
+    tr_variantInitDict(child, n_reserve);
     return child;
 }
 

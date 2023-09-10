@@ -8,7 +8,6 @@
 #include <algorithm> // std::move()
 #include <cstddef> // size_t
 #include <cstdint> // int64_t
-#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -44,25 +43,79 @@ public:
 
     using Vector = std::vector<tr_variant>;
 
-    class Map : public std::map<tr_quark, tr_variant>
+    class Map : public std::vector<std::pair<tr_quark, tr_variant>>
     {
     public:
+        Map(size_t const n_reserve = 0U)
+        {
+            reserve(n_reserve);
+        }
+
+        [[nodiscard]] auto find(tr_quark const key) noexcept
+        {
+            return std::find_if(begin(), end(), [key](auto const& item) { return item.first == key; });
+        }
+
+        [[nodiscard]] auto find(tr_quark const key) const noexcept
+        {
+            return std::find_if(cbegin(), cend(), [key](auto const& item) { return item.first == key; });
+        }
+
+        [[nodiscard]] auto contains(tr_quark const key) const noexcept
+        {
+            return find(key) != end();
+        }
+
+        auto erase(tr_quark const key)
+        {
+            if (auto iter = find(key); iter != end())
+            {
+                std::vector<std::pair<tr_quark, tr_variant>>::erase(iter);
+                return 1U;
+            }
+
+            return 0U;
+        }
+
+        [[nodiscard]] tr_variant& operator[](tr_quark const& key)
+        {
+            if (auto const iter = find(key); iter != end())
+            {
+                return iter->second;
+            }
+
+            return emplace_back(key, tr_variant{}).second;
+        }
+
+        template<typename Val>
+        std::pair<tr_variant&, bool> try_emplace(tr_quark const key, Val&& val)
+        {
+            if (auto iter = find(key); iter != end())
+            {
+                return { iter->second, false };
+            }
+
+            return { emplace_back(key, tr_variant{ std::move(val) }).second, true };
+        }
+
+        // --- custom functions
+
         template<typename Type>
-        [[nodiscard]] auto find_if(tr_quark key) const
+        [[nodiscard]] auto find_if(tr_quark const key) const noexcept
         {
             auto const iter = find(key);
             return iter != end() ? iter->second.get_if<Type>() : nullptr;
         }
 
         template<typename Type>
-        [[nodiscard]] std::optional<Type> value_if(tr_quark key) const
+        [[nodiscard]] std::optional<Type> value_if(tr_quark const key) const noexcept
         {
             if (auto const* const value = find_if<Type>(key); value != nullptr)
             {
-                return *value;
+                return std::optional<Type>{ *value };
             }
 
-            return std::nullopt;
+            return {};
         }
     };
 
@@ -72,14 +125,14 @@ public:
     tr_variant& operator=(tr_variant const&) = delete;
     tr_variant& operator=(tr_variant&& that) noexcept = default;
 
-    [[nodiscard]] static auto make_map() noexcept
+    [[nodiscard]] static auto make_map(size_t const n_reserve = 0U) noexcept
     {
         auto ret = tr_variant{};
-        ret.val_.emplace<Map>();
+        ret.val_.emplace<Map>(n_reserve);
         return ret;
     }
 
-    [[nodiscard]] static auto make_vector(size_t n_reserve) noexcept
+    [[nodiscard]] static auto make_vector(size_t const n_reserve = 0U) noexcept
     {
         auto ret = tr_variant{};
         ret.val_.emplace<Vector>().reserve(n_reserve);
@@ -284,8 +337,8 @@ void tr_variantInitInt(tr_variant* initme, int64_t value);
 
 // --- Lists
 
-void tr_variantInitList(tr_variant* initme, size_t reserve_count);
-void tr_variantListReserve(tr_variant* var, size_t reserve_count);
+void tr_variantInitList(tr_variant* initme, size_t n_reserve);
+void tr_variantListReserve(tr_variant* var, size_t n_reserve);
 
 tr_variant* tr_variantListAdd(tr_variant* var);
 tr_variant* tr_variantListAddBool(tr_variant* var, bool value);
@@ -295,8 +348,8 @@ tr_variant* tr_variantListAddStr(tr_variant* var, std::string_view value);
 tr_variant* tr_variantListAddStrView(tr_variant* var, std::string_view value);
 tr_variant* tr_variantListAddQuark(tr_variant* var, tr_quark value);
 tr_variant* tr_variantListAddRaw(tr_variant* var, void const* value, size_t value_len);
-tr_variant* tr_variantListAddList(tr_variant* var, size_t reserve_count);
-tr_variant* tr_variantListAddDict(tr_variant* var, size_t reserve_count);
+tr_variant* tr_variantListAddList(tr_variant* var, size_t n_reserve);
+tr_variant* tr_variantListAddDict(tr_variant* var, size_t n_reserve);
 tr_variant* tr_variantListChild(tr_variant* var, size_t pos);
 
 bool tr_variantListRemove(tr_variant* var, size_t pos);
@@ -316,8 +369,8 @@ bool tr_variantListRemove(tr_variant* var, size_t pos);
 
 // --- Dictionaries
 
-void tr_variantInitDict(tr_variant* initme, size_t reserve_count);
-void tr_variantDictReserve(tr_variant* var, size_t reserve_count);
+void tr_variantInitDict(tr_variant* initme, size_t n_reserve);
+void tr_variantDictReserve(tr_variant* var, size_t n_reserve);
 bool tr_variantDictRemove(tr_variant* var, tr_quark key);
 
 tr_variant* tr_variantDictAdd(tr_variant* var, tr_quark key);
@@ -327,8 +380,8 @@ tr_variant* tr_variantDictAddBool(tr_variant* var, tr_quark key, bool value);
 tr_variant* tr_variantDictAddStr(tr_variant* var, tr_quark key, std::string_view value);
 tr_variant* tr_variantDictAddStrView(tr_variant* var, tr_quark key, std::string_view value);
 tr_variant* tr_variantDictAddQuark(tr_variant* var, tr_quark key, tr_quark val);
-tr_variant* tr_variantDictAddList(tr_variant* var, tr_quark key, size_t reserve_count);
-tr_variant* tr_variantDictAddDict(tr_variant* var, tr_quark key, size_t reserve_count);
+tr_variant* tr_variantDictAddList(tr_variant* var, tr_quark key, size_t n_reserve);
+tr_variant* tr_variantDictAddDict(tr_variant* var, tr_quark key, size_t n_reserve);
 tr_variant* tr_variantDictAddRaw(tr_variant* var, tr_quark key, void const* value, size_t len);
 
 bool tr_variantDictChild(tr_variant* var, size_t pos, tr_quark* setme_key, tr_variant** setme_value);
