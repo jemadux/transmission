@@ -168,9 +168,9 @@ public:
         {
             val_.emplace<bool>(value);
         }
-        else if constexpr (std::is_integral_v<Val>)
+        else if constexpr (std::is_integral_v<Val> || std::is_enum_v<Val>)
         {
-            val_.emplace<int64_t>(static_cast<int64_t>(value));
+            val_ = static_cast<int64_t>(value);
         }
         else
         {
