@@ -139,6 +139,18 @@ public:
         return ret;
     }
 
+    [[nodiscard]] static auto make_raw(void const* value, size_t n_bytes)
+    {
+        return tr_variant{ std::string{ static_cast<char const*>(value), n_bytes } };
+    }
+
+    template<typename CharSpan>
+    [[nodiscard]] static auto make_raw(CharSpan const& value)
+    {
+        static_assert(sizeof(CharSpan::value_type) == 1U);
+        return make_raw(std::data(value), std::size(value));
+    }
+
     template<typename Val>
     tr_variant(Val value)
     {
@@ -148,7 +160,22 @@ public:
     template<typename Val>
     tr_variant& operator=(Val value)
     {
-        val_ = std::move(value);
+        if constexpr (std::is_same_v<Val, std::string_view>)
+        {
+            val_.emplace<StringHolder>(std::string{ value });
+        }
+        else if constexpr (std::is_same_v<Val, bool>)
+        {
+            val_.emplace<bool>(value);
+        }
+        else if constexpr (std::is_integral_v<Val>)
+        {
+            val_.emplace<int64_t>(static_cast<int64_t>(value));
+        }
+        else
+        {
+            val_ = std::move(value);
+        }
         return *this;
     }
 
@@ -167,24 +194,6 @@ public:
     tr_variant& operator=(char const* const value)
     {
         val_.emplace<StringHolder>(std::string{ value != nullptr ? value : "" });
-        return *this;
-    }
-
-    tr_variant& operator=(std::string_view value)
-    {
-        val_.emplace<StringHolder>(std::string{ value });
-        return *this;
-    }
-
-    tr_variant& operator=(int value)
-    {
-        *this = static_cast<int64_t>(value);
-        return *this;
-    }
-
-    tr_variant& operator=(uint64_t value)
-    {
-        *this = static_cast<int64_t>(value); // hmmm
         return *this;
     }
 
@@ -347,7 +356,7 @@ tr_variant* tr_variantListAddReal(tr_variant* var, double value);
 tr_variant* tr_variantListAddStr(tr_variant* var, std::string_view value);
 tr_variant* tr_variantListAddStrView(tr_variant* var, std::string_view value);
 tr_variant* tr_variantListAddQuark(tr_variant* var, tr_quark value);
-tr_variant* tr_variantListAddRaw(tr_variant* var, void const* value, size_t value_len);
+tr_variant* tr_variantListAddRaw(tr_variant* var, void const* value, size_t n_bytes);
 tr_variant* tr_variantListAddList(tr_variant* var, size_t n_reserve);
 tr_variant* tr_variantListAddDict(tr_variant* var, size_t n_reserve);
 tr_variant* tr_variantListChild(tr_variant* var, size_t pos);
@@ -382,7 +391,7 @@ tr_variant* tr_variantDictAddStrView(tr_variant* var, tr_quark key, std::string_
 tr_variant* tr_variantDictAddQuark(tr_variant* var, tr_quark key, tr_quark val);
 tr_variant* tr_variantDictAddList(tr_variant* var, tr_quark key, size_t n_reserve);
 tr_variant* tr_variantDictAddDict(tr_variant* var, tr_quark key, size_t n_reserve);
-tr_variant* tr_variantDictAddRaw(tr_variant* var, tr_quark key, void const* value, size_t len);
+tr_variant* tr_variantDictAddRaw(tr_variant* var, tr_quark key, void const* value, size_t n_bytes);
 
 bool tr_variantDictChild(tr_variant* var, size_t pos, tr_quark* setme_key, tr_variant** setme_value);
 tr_variant* tr_variantDictFind(tr_variant* var, tr_quark key);

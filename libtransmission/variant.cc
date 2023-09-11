@@ -468,10 +468,10 @@ tr_variant* tr_variantListAddQuark(tr_variant* const var, tr_quark value)
     return tr_variantListAddStrView(var, tr_quark_get_string_view(value));
 }
 
-tr_variant* tr_variantListAddRaw(tr_variant* const var, void const* value, size_t value_len)
+tr_variant* tr_variantListAddRaw(tr_variant* const var, void const* value, size_t n_bytes)
 {
     auto* const child = tr_variantListAdd(var);
-    *child = std::string_view{ static_cast<char const*>(value), value_len };
+    *child = tr_variant::make_raw(value, n_bytes);
     return child;
 }
 
@@ -552,11 +552,11 @@ tr_variant* tr_variantDictAddStrView(tr_variant* const var, tr_quark key, std::s
     return child;
 }
 
-tr_variant* tr_variantDictAddRaw(tr_variant* const var, tr_quark key, void const* value, size_t len)
+tr_variant* tr_variantDictAddRaw(tr_variant* const var, tr_quark key, void const* value, size_t n_bytes)
 {
     tr_variantDictRemove(var, key);
     auto* const child = tr_variantDictAdd(var, key);
-    tr_variantInitRaw(child, value, len);
+    *child = tr_variant::make_raw(value, n_bytes);
     return child;
 }
 
